@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Находка · Платформа города</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#38bdf8">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Находка">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;overflow-x:hidden}
+kbd{display:inline-block;background:#0f172a;border:1px solid #475569;border-bottom-width:3px;border-radius:6px;padding:2px 8px;font-family:monospace;font-size:12px;color:#38bdf8;min-width:26px;text-align:center}
+a{color:#38bdf8;text-decoration:none}
+a:hover{text-decoration:underline}
+button{cursor:pointer;font-family:inherit}
+input,textarea,select{width:100%;padding:10px;margin:6px 0;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;font-family:inherit}
+input:focus,textarea:focus{outline:2px solid #38bdf8;outline-offset:0}
+#welcome{position:fixed;inset:0;z-index:5000;background:radial-gradient(ellipse at center,#1e3a8a 0%,#0f172a 60%,#020617 100%);display:flex;align-items:center;justify-content:center;transition:opacity .8s ease,visibility .8s ease}
+#welcome.hidden{opacity:0;visibility:hidden}
+#welcome .stars{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(2px 2px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 60% 70%,#fff,transparent),radial-gradient(1px 1px at 80% 20%,#fff,transparent),radial-gradient(2px 2px at 40% 80%,#fff,transparent),radial-gradient(1px 1px at 90% 50%,#fff,transparent),radial-gradient(1px 1px at 15% 75%,#fff,transparent);background-size:200% 200%;animation:drift 60s linear infinite;opacity:.7}
+@keyframes drift{from{background-position:0 0}to{background-position:400px 400px}}
+.welcome-content{position:relative;z-index:2;text-align:center;padding:40px 24px;max-width:900px;animation:fadeUp 1.2s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.neon-sign{position:relative;display:inline-block;padding:30px 40px;margin-bottom:26px}
+.neon-sign::before{content:'';position:absolute;inset:-30px;background:radial-gradient(circle at 50% 50%,rgba(56,189,248,.35) 0%,rgba(167,139,250,.25) 30%,transparent 70%);filter:blur(30px);z-index:-1;animation:pulseGlow 3.5s ease-in-out infinite}
+@keyframes pulseGlow{0%,100%{opacity:.8;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+.neon-title{position:relative;font-family:'Segoe UI',system-ui,sans-serif;font-size:clamp(38px,7.5vw,86px);font-weight:800;line-height:1.05;letter-spacing:1px;color:#f0f9ff;text-shadow:0 0 6px #fff,0 0 14px #38bdf8,0 0 28px #38bdf8,0 0 48px #38bdf8,0 0 80px #a78bfa,0 0 120px #a78bfa;animation:flicker 4s infinite alternate}
+.neon-title span{display:block;background:linear-gradient(135deg,#f472b6,#a78bfa,#38bdf8);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 8px rgba(56,189,248,.9)) drop-shadow(0 0 22px rgba(167,139,250,.8)) drop-shadow(0 0 42px rgba(244,114,182,.6))}
+@keyframes flicker{0%,18%,22%,25%,53%,57%,100%{opacity:1;filter:brightness(1)}20%,24%,55%{opacity:.85;filter:brightness(1.15)}}
+.neon-sign::after{content:'';display:block;height:2px;margin-top:20px;background:linear-gradient(90deg,transparent 0%,#38bdf8 20%,#a78bfa 50%,#f472b6 80%,transparent 100%);box-shadow:0 0 10px #38bdf8,0 0 24px #a78bfa;border-radius:2px}
+.welcome-tagline{font-size:clamp(16px,2.2vw,22px);color:#cbd5e1;line-height:1.5;max-width:620px;margin:26px auto 40px;letter-spacing:.3px;text-shadow:0 0 20px rgba(56,189,248,.25)}
+.welcome-tagline b{color:#38bdf8;font-weight:600;text-shadow:0 0 12px rgba(56,189,248,.6)}
+.enter-btn{background:linear-gradient(135deg,#38bdf8,#a78bfa);color:#0f172a;border:none;border-radius:14px;padding:16px 46px;font-size:18px;font-weight:700;letter-spacing:.3px;transition:transform .15s,box-shadow .3s;box-shadow:0 10px 30px rgba(56,189,248,.35),0 0 0 0 rgba(56,189,248,.6);animation:btnPulse 3s ease-in-out infinite}
+@keyframes btnPulse{0%,100%{box-shadow:0 10px 30px rgba(56,189,248,.35),0 0 0 0 rgba(56,189,248,.6)}50%{box-shadow:0 14px 40px rgba(56,189,248,.55),0 0 0 14px rgba(56,189,248,0)}}
+.enter-btn:hover{transform:translateY(-2px);box-shadow:0 18px 50px rgba(56,189,248,.65)}
+header{position:sticky;top:0;z-index:900;display:flex;justify-content:space-between;align-items:center;padding:14px 24px;background:rgba(30,41,59,.95);backdrop-filter:blur(8px);border-bottom:1px solid #334155}
+header .brand{font-weight:800;font-size:18px;letter-spacing:-.5px}
+header .brand span{background:linear-gradient(135deg,#38bdf8,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent}
+header nav{display:flex;gap:6px;flex-wrap:wrap}
+header nav button{background:transparent;border:1px solid transparent;color:#cbd5e1;padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;transition:.15s}
+header nav button:hover{background:#334155;color:#fff}
+header nav button.active{background:#38bdf8;color:#0f172a}
+.container{max-width:1100px;margin:24px auto;padding:0 16px}
+.tab-pane{display:none;animation:fadeIn .3s}
+.tab-pane.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+h2{margin:20px 0 12px;font-size:22px;color:#e2e8f0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.card{background:#1e293b;border:2px solid transparent;border-radius:12px;overflow:hidden;padding:12px;transition:.2s}
+.card:hover{transform:translateY(-2px);border-color:#334155}
+.card .media-box{width:100%;height:180px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:48px;color:#334155;overflow:hidden}
+.card .media-box img,.card .media-box video{width:100%;height:100%;object-fit:cover}
+.card h3{margin:10px 0 4px;font-size:16px}
+.card p{font-size:13px;color:#94a3b8;line-height:1.5}
+.card .meta{font-size:12px;color:#64748b;margin-top:6px}
+.comment{padding:6px 8px;border-bottom:1px solid #334155;font-size:13px}
+.comment b{color:#38bdf8}
+.comment-form{margin-top:8px}
+.comment-form button{background:#38bdf8;color:#0f172a;border:none;border-radius:8px;padding:8px;font-weight:700;width:100%;margin-top:4px}
+.panel{background:#1e293b;border-radius:12px;padding:20px;margin-bottom:20px}
+.panel button{background:#38bdf8;color:#0f172a;border:none;border-radius:8px;padding:12px;font-weight:700;width:100%;margin-top:8px}
+#map{height:60vh;border-radius:12px;margin-top:16px;z-index:1}
+.live-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-top:16px}
+@media(max-width:800px){.live-grid{grid-template-columns:1fr}}
+video{background:#000;border-radius:12px;width:100%;max-height:60vh}
+.live-list{display:grid;gap:12px}
+.live-item{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center}
+.live-item button{background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:#1e293b;border:1px solid #334155;border-left:4px solid #38bdf8;padding:12px 24px;border-radius:10px;font-size:14px;z-index:10000;opacity:0;transition:.3s;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.error{border-left-color:#ef4444}
+#toast.success{border-left-color:#10b981}
+.auth-tabs{display:flex;gap:8px;margin-bottom:16px}
+.auth-tabs button{flex:1;background:#334155;color:#cbd5e1;border:none;border-radius:8px;padding:10px;font-weight:600}
+.auth-tabs button.active{background:#38bdf8;color:#0f172a}
+.auth-pane{display:none}
+.auth-pane.active{display:block}
+</style>
+</head>
+<body>
+<div id="welcome">
+<div class="stars"></div>
+<div class="welcome-content">
+<div class="neon-sign">
+<h1 class="neon-title">Добро пожаловать<span>в Находку</span></h1>
+</div>
+<p class="welcome-tagline">Здесь вы узнаете, <b>как и чем живёт ваш город</b></p>
+<button id="enterBtn" class="enter-btn">Войти на сайт →</button>
+</div>
+</div>
+
+<header>
+<div class="brand">📸 <span>Находка</span></div>
+<nav id="nav">
+<button data-tab="feed" class="active">Лента</button>
+<button data-tab="map">Карта</button>
+<button data-tab="live">Эфир</button>
+<button data-tab="auth">Профиль</button>
+</nav>
+</header>
+
+<div class="container">
+
+<section class="tab-pane active" id="tab-feed">
+<div class="panel">
+<h2>📤 Загрузить медиа</h2>
+<input id="upTitle" placeholder="Заголовок">
+<textarea id="upDesc" placeholder="Описание"></textarea>
+<input id="upFile" type="file" accept="image/*,video/*">
+<input id="upLat" placeholder="Широта (необязательно)">
+<input id="upLng" placeholder="Долгота (необязательно)">
+<button id="upBtn">Загрузить</button>
+</div>
+<h2>🎬 Лента</h2>
+<div class="grid" id="feed"></div>
+</section>
+
+<section class="tab-pane" id="tab-map">
+<div class="panel">
+<h2>📍 Добавить трекер</h2>
+<input id="trTitle" placeholder="Название места">
+<textarea id="trDesc" placeholder="Описание"></textarea>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<input id="trLat" placeholder="Широта">
+<input id="trLng" placeholder="Долгота">
+</div>
+<button id="trBtn">Добавить трекер</button>
+</div>
+<h2>🗺️ Карта трекеров</h2>
+<div id="map"></div>
+</section>
+
+<section class="tab-pane" id="tab-live">
+<div class="panel">
+<h2>🔴 Начать трансляцию</h2>
+<input id="roomName" placeholder="Название комнаты (например, nakhodka)">
+<button id="startBtn" style="background:#ef4444;color:#fff">🔴 Начать эфир</button>
+<button id="stopBtn" style="background:#334155;color:#fff;margin-top:8px">⏹ Остановить</button>
+</div>
+<h2>📡 Активные эфиры</h2>
+<div class="live-list" id="liveList">
+<p style="color:#64748b">Пока никто не вещает. Нажмите «Начать эфир».</p>
+</div>
+<h2>📺 Просмотр</h2>
+<div class="live-grid">
+<video id="remoteVideo" autoplay playsinline></video>
+<video id="localVideo" autoplay playsinline muted></video>
+</div>
+</section>
+
+<section class="tab-pane" id="tab-auth">
+<div class="panel" style="max-width:440px;margin:40px auto">
+<div class="auth-tabs">
+<button data-auth="login" class="active">Вход</button>
+<button data-auth="register">Регистрация</button>
+</div>
+<div class="auth-pane active" id="pane-login">
+<input id="loginField" placeholder="Email или телефон">
+<input id="loginPass" type="password" placeholder="Пароль">
+<button id="loginBtn">Войти</button>
+<p style="margin-top:12px;font-size:13px;color:#94a3b8">Нет аккаунта? Нажмите «Регистрация» выше</p>
+</div>
+<div class="auth-pane" id="pane-register">
+<input id="regName" placeholder="Имя">
+<input id="regEmail" type="email" placeholder="Email (необязательно)">
+<input id="regPhone" placeholder="Телефон (необязательно)">
+<input id="regPass" type="password" placeholder="Пароль">
+<button id="regBtn">Создать аккаунт</button>
+</div>
+<div id="profileBox" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid #334155">
+<p style="color:#10b981">✅ Вы вошли</p>
+<p id="profileInfo" style="font-size:13px;color:#94a3b8;margin:8px 0"></p>
+<button id="logoutBtn" style="background:#ef4444;color:#fff">Выйти</button>
+</div>
+</div>
+</section>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+function toast(msg,type){type=type||'';var t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;clearTimeout(t._timer);t._timer=setTimeout(function(){t.className='';},2500);}
+function switchTab(name){document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.remove('active');});var el=document.getElementById('tab-'+name);if(el)el.classList.add('active');document.querySelectorAll('#nav button').forEach(function(b){b.classList.toggle('active',b.dataset.tab===name);});if(name==='map'&&window._map)setTimeout(function(){window._map.invalidateSize();},100);}
+document.querySelectorAll('#nav button').forEach(function(b){b.onclick=function(){switchTab(b.dataset.tab);};});
+function enterSite(){document.getElementById('welcome').classList.add('hidden');localStorage.setItem('nakhodka_seen','1');}
+document.getElementById('enterBtn').onclick=enterSite;
+
+function getToken(){return localStorage.getItem('nakhodka_token');}
+function authHeaders(){var t=getToken();return t?{Authorization:'Bearer '+t}:{};}
+
+document.querySelectorAll('[data-auth]').forEach(function(b){b.onclick=function(){document.querySelectorAll('[data-auth]').forEach(function(x){x.classList.remove('active');});document.querySelectorAll('.auth-pane').forEach(function(x){x.classList.remove('active');});b.classList.add('active');document.getElementById('pane-'+b.dataset.auth).classList.add('active');};});
+
+document.getElementById('loginBtn').onclick=async function(){
+var login=document.getElementById('loginField').value;
+var password=document.getElementById('loginPass').value;
+if(!login||!password)return toast('Заполните поля','error');
+try{
+var r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login:login,password:password})});
+var d=await r.json();
+if(d.token){localStorage.setItem('nakhodka_token',d.token);localStorage.setItem('nakhodka_user',d.name||login);toast('Вы вошли!','success');updateProfile();}
+else toast(d.error||'Ошибка входа','error');
+}catch(e){toast('Нет связи с сервером','error');}
+};
+
+document.getElementById('regBtn').onclick=async function(){
+var name=document.getElementById('regName').value;
+var email=document.getElementById('regEmail').value;
+var phone=document.getElementById('regPhone').value;
+var password=document.getElementById('regPass').value;
+if((!email&&!phone)||!password)return toast('Укажите email/телефон и пароль','error');
+try{
+var r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,email:email,phone:phone,password:password})});
+var d=await r.json();
+if(d.token){localStorage.setItem('nakhodka_token',d.token);localStorage.setItem('nakhodka_user',d.name||email||phone);toast('Аккаунт создан!','success');updateProfile();}
+else toast(d.error||'Ошибка','error');
+}catch(e){toast('Нет связи с сервером','error');}
+};
+
+document.getElementById('logoutBtn').onclick=function(){localStorage.removeItem('nakhodka_token');localStorage.removeItem('nakhodka_user');toast('Вы вышли');updateProfile();};
+
+function updateProfile(){var token=getToken();var box=document.getElementById('profileBox');var info=document.getElementById('profileInfo');if(token){box.style.display='block';info.textContent='Пользователь: '+(localStorage.getItem('nakhodka_user')||'гость');}else{box.style.display='none';}}
+updateProfile();
+
+async function loadFeed(){
+var feed=document.getElementById('feed');
+var items=[];
+try{
+var r=await fetch('/api/media');
+if(r.ok){items=await r.json();}
+}catch(e){}
+if(!items.length){feed.innerHTML='<p style="color:#64748b">Пока пусто. Загрузите первое медиа!</p>';return;}
+feed.innerHTML=items.map(function(m){
+var media;
+if(m.filename){media=m.type==='video'?'<video src="/uploads/'+m.filename+'" controls></video>':'<img src="/uploads/'+m.filename+'" alt="">';}
+else{media='<span>'+(m.emoji||'📷')+'</span>';}
+return '<div class="card" data-id="'+m.id+'"><div class="media-box">'+media+'</div><h3>'+(m.title||'Без названия')+'</h3><p>'+(m.description||'')+'</p><div class="meta">👤 '+(m.user_name||'Аноним')+'</div><div class="comments" id="cm-'+m.id+'"></div><form class="comment-form" data-id="'+m.id+'"><input name="text" placeholder="Комментарий..."><button>Отправить</button></form></div>';
+}).join('');
+
+document.querySelectorAll('.comment-form').forEach(function(f){
+f.onsubmit=async function(e){
+e.preventDefault();
+var text=f.text.value.trim();
+if(!text)return;
+var id=f.dataset.id;
+try{
+await fetch('/api/media/'+id+'/comments',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authHeaders()),body:JSON.stringify({text:text})});
+}catch(e){}
+var box=document.getElementById('cm-'+id);
+var el=document.createElement('div');
+el.className='comment';
+el.innerHTML='<b>'+(localStorage.getItem('nakhodka_user')||'Вы')+':</b> '+text;
+box.appendChild(el);
+f.reset();
+toast('Комментарий добавлен','success');
+};
+});
+}
+
+document.getElementById('upBtn').onclick=async function(){
+var file=document.getElementById('upFile').files[0];
+if(!file)return toast('Выберите файл','error');
+var fd=new FormData();
+fd.append('file',file);
+fd.append('title',document.getElementById('upTitle').value);
+fd.append('description',document.getElementById('upDesc').value);
+fd.append('latitude',document.getElementById('upLat').value);
+fd.append('longitude',document.getElementById('upLng').value);
+try{
+var r=await fetch('/api/media',{method:'POST',headers:authHeaders(),body:fd});
+if(r.ok){toast('Загружено!','success');loadFeed();}
+else toast('Ошибка загрузки','error');
+}catch(e){toast('Нет связи с сервером','error');}
+};
+
+loadFeed();
+
+var map,markers=[];
+function initMap(){
+if(map)return;
+map=L.map('map').setView([42.8244,132.8877],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+map.on('click',function(e){document.getElementById('trLat').value=e.latlng.lat.toFixed(6);document.getElementById('trLng').value=e.latlng.lng.toFixed(6);toast('Координаты заполнены');});
+addMarker(42.8244,132.8877,'Центр Находки','Главная площадь');
+addMarker(42.7924,132.8732,'Бухта Находка','Живописный вид');
+window._map=map;
+}
+function addMarker(lat,lng,title,desc){if(!map)return;var m=L.marker([lat,lng]).addTo(map);m.bindPopup('<b>'+title+'</b><br>'+desc);markers.push(m);}
+document.getElementById('trBtn').onclick=function(){
+var title=document.getElementById('trTitle').value;
+var desc=document.getElementById('trDesc').value;
+var lat=parseFloat(document.getElementById('trLat').value);
+var lng=parseFloat(document.getElementById('trLng').value);
+if(!title||isNaN(lat)||isNaN(lng))return toast('Заполните название и координаты','error');
+addMarker(lat,lng,title,desc);
+toast('Трекер добавлен','success');
+document.getElementById('trTitle').value='';
+document.getElementById('trDesc').value='';
+};
+
+var socket=null;
+try{socket=io();}catch(e){}
+var localStream=null,peer=null,currentRoom=null,isBroadcaster=false;
+var iceConfig={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
+
+async function getMedia(){
+if(localStream)return localStream;
+try{localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});document.getElementById('localVideo').srcObject=localStream;}
+catch(e){toast('Нет доступа к камере','error');}
+return localStream;
+}
+
+document.getElementById('startBtn').onclick=async function(){
+var room=document.getElementById('roomName').value.trim()||'demo-room';
+await getMedia();
+isBroadcaster=true;
+currentRoom=room;
+if(socket)socket.emit('stream:start',{roomId:room});
+else addLiveRoom(room+' (вы)');
+toast('Эфир начат: '+room,'success');
+};
+
+document.getElementById('stopBtn').onclick=function(){
+if(currentRoom&&socket)socket.emit('stream:end',{roomId:currentRoom});
+if(peer){peer.close();peer=null;}
+currentRoom=null;
+isBroadcaster=false;
+document.getElementById('remoteVideo').srcObject=null;
+toast('Эфир остановлен');
+};
+
+function addLiveRoom(name){
+var list=document.getElementById('liveList');
+var empty=list.querySelector('p');
+if(empty)empty.remove();
+var exists=[].slice.call(list.children).some(function(x){return x.dataset.room===name;});
+if(exists)return;
+var el=document.createElement('div');
+el.className='live-item';
+el.dataset.room=name;
+el.innerHTML='<span>🔴 '+name+'</span><button>Смотреть</button>';
+el.querySelector('button').onclick=function(){
+if(socket)socket.emit('stream:join',{roomId:name});
+toast('Подключение к '+name+'...');
+};
+list.appendChild(el);
+}
+
+function createPeer(isCaller,viewerId){
+peer=new RTCPeerConnection(iceConfig);
+peer.onicecandidate=function(e){if(e.candidate&&socket)socket.emit('stream:ice',{to:viewerId,candidate:e.candidate});};
+peer.ontrack=function(e){document.getElementById('remoteVideo').srcObject=e.streams[0];};
+if(isCaller&&localStream)localStream.getTracks().forEach(function(t){peer.addTrack(t,localStream);});
+return peer;
+}
+
+if(socket){
+socket.on('stream:list',function(rooms){
+var list=document.getElementById('liveList');
+list.innerHTML=rooms.length?'':'<p style="color:#64748b">Пока никто не вещает.</p>';
+rooms.forEach(addLiveRoom);
+});
+socket.on('stream:viewer-joined',async function(d){
+if(!isBroadcaster)return;
+createPeer(true,d.viewerId);
+var offer=await peer.createOffer();
+await peer.setLocalDescription(offer);
+socket.emit('stream:offer',{to:d.viewerId,offer:offer});
+});
+socket.on('stream:offer',async function(d){
+createPeer(false,d.from);
+await peer.setRemoteDescription(d.offer);
+var ans=await peer.createAnswer();
+await peer.setLocalDescription(ans);
+socket.emit('stream:answer',{to:d.from,answer:ans});
+});
+socket.on('stream:answer',async function(d){if(peer)await peer.setRemoteDescription(d.answer);});
+socket.on('stream:ice',async function(d){if(peer)try{await peer.addIceCandidate(d.candidate);}catch(e){}});
+socket.on('stream:ended',function(){document.getElementById('remoteVideo').srcObject=null;toast('Эфир завершён');});
+}
+
+document.querySelector('#nav button[data-tab="map"]').addEventListener('click',initMap);
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('SW зарегистрирован'))
+      .catch(err => console.log('SW ошибка:', err));
+  }
+</script>
+</body>
+</html>
