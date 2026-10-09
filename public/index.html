@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Находка · Платформа города</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#38bdf8">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Находка">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -382,6 +388,13 @@ socket.on('stream:ended',function(){document.getElementById('remoteVideo').srcOb
 }
 
 document.querySelector('#nav button[data-tab="map"]').addEventListener('click',initMap);
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('SW зарегистрирован'))
+      .catch(err => console.log('SW ошибка:', err));
+  }
 </script>
 </body>
 </html>
